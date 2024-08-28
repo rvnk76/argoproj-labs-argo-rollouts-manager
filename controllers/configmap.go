@@ -77,6 +77,7 @@ func (r *RolloutManagerReconciler) reconcileConfigMap(ctx context.Context, cr ro
 					TrafficRouterPluginConfigMapKey: string(pluginBytes),
 				}
 
+				log.Info("Updating Rollouts ConfigMap due to detected difference")
 				return r.Client.Update(ctx, actualConfigMap)
 			} else {
 				// Plugin URL is the same, nothing to do
@@ -93,6 +94,8 @@ func (r *RolloutManagerReconciler) reconcileConfigMap(ctx context.Context, cr ro
 	}
 
 	actualConfigMap.Data[TrafficRouterPluginConfigMapKey] = string(pluginString)
+
+	log.Info("Updating Rollouts ConfigMap")
 
 	return r.Client.Update(ctx, actualConfigMap)
 }
