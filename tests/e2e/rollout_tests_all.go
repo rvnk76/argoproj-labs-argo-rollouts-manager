@@ -15,6 +15,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/argoproj-labs/argo-rollouts-manager/api/v1alpha1"
 	rolloutsmanagerv1alpha1 "github.com/argoproj-labs/argo-rollouts-manager/api/v1alpha1"
 
 	controllers "github.com/argoproj-labs/argo-rollouts-manager/controllers"
@@ -594,6 +595,56 @@ func RunRolloutsTests(namespaceScopedParam bool) {
 				Eventually(&secret, "10s", "1s").Should(k8s.ExistByName(k8sClient))
 
 			})
+		})
+
+		It("should contain two replicas and the '--leader-elect' argument set to true, and verify that the anti-affinity rule is added by default when HA is enabled", func() {
+			By("Create cluster-scoped RolloutManager in a namespace.")
+
+			rolloutsManager := v1alpha1.RolloutManager{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-rollouts-manager",
+					Namespace: fixture.TestE2ENamespace,
+				},
+				Spec: v1alpha1.RolloutManagerSpec{
+					NamespaceScoped: namespaceScopedParam,
+					HA: v1alpha1.RolloutManagerHASpec{
+						Enabled: true,
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, &rolloutsManager)).To(Succeed())
+
+			depl := appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      controllers.DefaultArgoRolloutsResourceName,
+					Namespace: fixture.TestE2ENamespace,
+				},
+			}
+
+			Eventually(&depl, "30s", "1s").Should(k8s.ExistByName(k8sClient))
+
+			replicas := int32(2)
+			Expect(depl.Spec.Replicas).To(Equal(&replicas))
+			Expect(depl.Spec.Template.Spec.Containers[0].Args).To(ContainElements("--leader-elect", "true"))
+
+			By("verifying that the anti-affinity rules are set correctly")
+			affinity := depl.Spec.Template.Spec.Affinity
+			Expect(affinity).NotTo(BeNil())
+			Expect(affinity.PodAntiAffinity).NotTo(BeNil())
+
+			By("Verify PreferredDuringSchedulingIgnoredDuringExecution")
+			preferred := affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution
+			Expect(preferred).To(HaveLen(1))
+			Expect(preferred[0].Weight).To(Equal(int32(100)))
+			Expect(preferred[0].PodAffinityTerm.TopologyKey).To(Equal(controllers.TopologyKubernetesZoneLabel))
+			Expect(preferred[0].PodAffinityTerm.LabelSelector.MatchLabels).To(Equal(depl.Spec.Selector.MatchLabels))
+
+			By("Verify RequiredDuringSchedulingIgnoredDuringExecution")
+			required := affinity.PodAntiAffinity.RequiredDuringSchedulingIgnoredDuringExecution
+			Expect(required).To(HaveLen(1))
+			Expect(required[0].TopologyKey).To(Equal(controllers.KubernetesHostnameLabel))
+			Expect(required[0].LabelSelector.MatchLabels).To(Equal(depl.Spec.Selector.MatchLabels))
 		})
 	})
 }
