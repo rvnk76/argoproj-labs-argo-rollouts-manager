@@ -420,7 +420,7 @@ var _ = Describe("Cluster-scoped RolloutManager tests", func() {
 			Expect(required).To(HaveLen(1))
 			Expect(required[0].TopologyKey).To(Equal(controllers.KubernetesHostnameLabel))
 			Expect(required[0].LabelSelector.MatchLabels).To(Equal(depl.Spec.Selector.MatchLabels))
-
 		})
+
 	})
 })

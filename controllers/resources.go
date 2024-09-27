@@ -340,18 +340,32 @@ func (r *RolloutManagerReconciler) removeClusterScopedResourcesIfApplicable(ctx 
 	}
 
 	// List of ClusterRoles '*aggregate*' to delete
+<<<<<<< HEAD
 	clusterRoleSuffixes := []string{"aggregate-to-admin", "aggregate-to-edit", "aggregate-to-view"}
 
 	// Iterate over each ClusterRole '*aggregate*' and delete if it exists
 	for _, suffix := range clusterRoleSuffixes {
 		roleName := fmt.Sprintf("%s-%s", DefaultArgoRolloutsResourceName, suffix)
 
+=======
+	clusterRoles := []string{
+		"argo-rollouts-aggregate-to-admin",
+		"argo-rollouts-aggregate-to-edit",
+		"argo-rollouts-aggregate-to-view",
+	}
+
+	// Iterate over each ClusterRole '*aggregate*' and delete if it exists
+	for _, roleName := range clusterRoles {
+>>>>>>> 46e3c9c (Fix merge conflicts)
 		clusterRole := &rbacv1.ClusterRole{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: roleName,
 			},
 		}
+<<<<<<< HEAD
 
+=======
+>>>>>>> 46e3c9c (Fix merge conflicts)
 		if err := r.Client.Get(ctx, client.ObjectKeyFromObject(clusterRole), clusterRole); err != nil {
 			if !apierrors.IsNotFound(err) {
 				log.Error(err, "error on retrieving ClusterRole", "name", roleName)
